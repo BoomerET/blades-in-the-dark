@@ -5,6 +5,7 @@ Unreleased
 - Character and crew notes (`system.description`), clock color and item `logic` are now declared fields, so they are kept by the data models
 - Item descriptions and experience clues use the `<prose-mirror>` editor instead of `{{editor}}`
 - Character and NPC notes are no longer enriched before being placed in their plain textareas, so saving the sheet can't write enriched link markup back into the notes
+- Updated the Crimson Text fonts to the current Google Fonts release (1.100), which fixes Firefox's "Glyph bbox was incorrect" console warnings; the original 0.13 Regular is kept, unmodified, for Greek and Cyrillic text only
 
 v.6.1.2
 - Fix the alignment of roll dialog options (#76, Karlinator)

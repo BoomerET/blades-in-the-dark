@@ -35,6 +35,16 @@
   font-style: normal;
 }
 
+// Crimson Text 1.100 has no Greek or Cyrillic, so the original 0.13 Regular (unmodified)
+// covers them. Browsers only download a unicode-range face when the page uses those characters.
+@font-face {
+  font-family: 'Crimson Text';
+  src: url('assets/fonts/CrimsonText/CrimsonText-Regular-v0.13.ttf')  format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  unicode-range: U+0370-03FF, U+0400-052F, U+1F00-1FFF;
+}
+
 @font-face {
   font-family: 'Crimson Text';
   src: url('assets/fonts/CrimsonText/CrimsonText-Bold.ttf')  format('truetype'); /* Safari, Android, iOS */
