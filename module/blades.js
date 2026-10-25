@@ -19,7 +19,8 @@ import { BladesClockSheet } from "./blades-clock-sheet.js";
 import { BladesNPCSheet } from "./blades-npc-sheet.js";
 import { BladesFactionSheet } from "./blades-faction-sheet.js";
 import * as migrations from "./migration.js";
-import { getActorSheetClass, getItemSheetClass, registerActorSheet, unregisterActorSheet, registerItemSheet, unregisterItemSheet } from "./compat.js";
+import { registerActorSheet, registerItemSheet } from "./compat.js";
+import { registerDataModels } from "./data-models.js";
 
 window.BladesHelpers = BladesHelpers;
 
@@ -42,9 +43,12 @@ Hooks.once("init", async function() {
   CONFIG.Item.documentClass = BladesItem;
   CONFIG.Actor.documentClass = BladesActor;
   CONFIG.ActiveEffect.documentClass = BladesActiveEffect;
+  registerDataModels();
 
   // Register System Settings
   registerSystemSettings();
+
+  registerSheets();
 
 
   if (game.settings.get('blades-in-the-dark', "PublicClocks")) {
@@ -317,24 +321,22 @@ Hooks.once("init", async function() {
 });
 
 /**
- * Once the entire VTT framework is initialized, check to see if we should perform a data migration
- * and register sheets. Sheet registration is delayed until the ready hook so the DocumentSheetConfig
- * API and the new foundry.documents collections are guaranteed to exist on V13+ while still
- * allowing the compatibility helpers to fall back on older cores.
+ * Register the system's Application V2 sheets. Core V14 ships no default Actor or Item
+ * sheet, so there is nothing to unregister first.
  */
-Hooks.once("ready", async function() {
-  const actorSheetClass = getActorSheetClass();
-  const itemSheetClass = getItemSheetClass();
-
-  unregisterActorSheet("core", actorSheetClass);
+function registerSheets() {
   registerActorSheet("blades", BladesActorSheet, { types: ["character"], makeDefault: true });
   registerActorSheet("blades", BladesCrewSheet, { types: ["crew"], makeDefault: true });
   registerActorSheet("blades", BladesFactionSheet, { types: ["factions"], makeDefault: true });
   registerActorSheet("blades", BladesClockSheet, { types: ["\uD83D\uDD5B clock"], makeDefault: true });
   registerActorSheet("blades", BladesNPCSheet, { types: ["npc"], makeDefault: true });
-  unregisterItemSheet("core", itemSheetClass);
   registerItemSheet("blades", BladesItemSheet, {makeDefault: true});
+}
 
+/**
+ * Once the entire VTT framework is initialized, check to see if we should perform a data migration.
+ */
+Hooks.once("ready", async function() {
   await preloadHandlebarsTemplates();
 
 /**
@@ -357,28 +359,13 @@ Hooks.once("ready", async function() {
 
 // getSceneControlButtons
 Hooks.on('getSceneControlButtons', controls => {
-	
-	if (foundry.utils.isNewerVersion(game.version,13)) {
-		controls.tokens.tools.DiceRoller = {
-			name: "DiceRoller",
-			title: "BITD.DiceRoller",
-			icon: "fas fa-dice",
-			onChange: (event, active) => {
-				simpleRollPopup();
-			},
-			button: true
-		};		
-	}
-});
-	
-Hooks.on("renderSceneControls", async (app, html) => {	
-
-	if (foundry.utils.isNewerVersion(13,game.version)) { 
-	  let dice_roller = $('<li class="scene-control" data-tooltip="Dice Roll"><i class="fas fa-dice"></i></li>');
-	  dice_roller.click( async function() {
-		await simpleRollPopup();
-	  });
-	  html.children().first().append( dice_roller );
-	}
-
+	controls.tokens.tools.DiceRoller = {
+		name: "DiceRoller",
+		title: "BITD.DiceRoller",
+		icon: "fas fa-dice",
+		onChange: (event, active) => {
+			simpleRollPopup();
+		},
+		button: true
+	};
 });

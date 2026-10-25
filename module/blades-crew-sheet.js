@@ -1,4 +1,4 @@
-import { BladesSheet } from "./blades-sheet.js";
+import { BladesSheet, parseDataValue } from "./blades-sheet.js";
 import { BladesActiveEffect } from "./blades-active-effect.js";
 import { BladesHelpers } from "./blades-helpers.js";
 
@@ -8,25 +8,32 @@ import { BladesHelpers } from "./blades-helpers.js";
 export class BladesCrewSheet extends BladesSheet {
 
   /** @override */
-	static get defaultOptions() {
-	  return foundry.utils.mergeObject(super.defaultOptions, {
-  	  classes: ["blades-in-the-dark", "sheet", "actor", "crew"],
-  	  template: "systems/blades-in-the-dark/templates/crew-sheet.html",
+  static DEFAULT_OPTIONS = {
+    classes: ["crew"],
+    position: {
       width: 940,
-      height: 940,
-      tabs: [{navSelector: ".tabs", contentSelector: ".tab-content", initial: "turfs"}]
-    });
-  }
+      height: 940
+    }
+  };
+
+  /** @override */
+  static PARTS = {
+    sheet: {
+      template: "systems/blades-in-the-dark/templates/crew-sheet.html",
+      scrollable: [""]
+    }
+  };
+
+  /** @override */
+  tabGroups = {
+    primary: "turfs"
+  };
 
   /* -------------------------------------------- */
 
   /** @override */
-  getData(options) {
-    const superData = super.getData( options );
-    const sheetData = superData.data;
-    sheetData.owner = superData.owner;
-    sheetData.editable = superData.editable;
-    sheetData.isGM = game.user.isGM;
+  async _prepareContext(options) {
+    const sheetData = await super._prepareContext(options);
 	
     // Prepare active effects
     sheetData.effects = BladesActiveEffect.prepareActiveEffectCategories(this.actor.effects);
@@ -58,13 +65,14 @@ export class BladesCrewSheet extends BladesSheet {
   
   /** @override **/
   async _onDropActor(event, droppedActor){
-    await super._onDropActor(event, droppedActor);
+    const result = await super._onDropActor(event, droppedActor);
     if (!this.actor.isOwner) {
       ui.notifications.error(`You do not have sufficient permissions to edit this character. Please speak to your GM if you feel you have reached this message in error.`, {permanent: true});
       return false;
     }
     await this.handleDrop(event, droppedActor);
-  }  
+    return result ?? droppedActor;
+  }
   
   /** @override **/
   async handleDrop(event, droppedEntity){
@@ -92,46 +100,42 @@ export class BladesCrewSheet extends BladesSheet {
     super.activateListeners(html);
 
     // Everything below here is only needed if the sheet is editable
-    if (!this.options.editable) return;
+    if (!this.isEditable) return;
 
     // Add Crew Type
-    html.find(".crew-class").click(this._onItemAddClick.bind(this));
+    this._on(".crew-class", "click", this._onItemAddClick.bind(this));
 
     // Add a new Cohort
-    html.find('.add-item').click(ev => {
+    this._on('.add-item', 'click', ev => {
       BladesHelpers._addOwnedItem(ev, this.actor);
     });
 
     // Toggle Turf
-    html.find('.turf-select').click( async ev => {
-      const element = $(ev.currentTarget).parents(".item");
-
-      let item_id = element.data("itemId")
-      let turf_id = $(ev.currentTarget).data("turfId");
-      let turf_current_status = $(ev.currentTarget).data("turfStatus");
+    this._on('.turf-select', 'click', async ev => {
+      let item_id = this._itemIdOf(ev.currentTarget);
+      let turf_id = parseDataValue(ev.currentTarget.dataset.turfId);
+      let turf_current_status = parseDataValue(ev.currentTarget.dataset.turfStatus);
       let turf_checkbox_name = 'system.turfs.' + turf_id + '.value';
 
       await this.actor.updateEmbeddedDocuments('Item', [{
         _id: item_id,
         [turf_checkbox_name]: !turf_current_status}]);
-      this.render(false);
+      this.render();
     });
 
     // Cohort Block Harm handler
-    html.find('.cohort-block-harm input[type="radio"]').change( async ev => {
-      const element = $(ev.currentTarget).parents(".item");
-
-      let item_id = element.data("itemId")
-      let harm_id = $(ev.currentTarget).val();
+    this._on('.cohort-block-harm input[type="radio"]', 'change', async ev => {
+      let item_id = this._itemIdOf(ev.currentTarget);
+      let harm_id = ev.currentTarget.value;
 
       await this.actor.updateEmbeddedDocuments('Item', [{
         _id: item_id,
         "system.harm": [harm_id]}]);
-      this.render(false);
+      this.render();
     });
 
     // Add custom contact
-    html.find('.add-custom-contact').click(() => {
+    this._on('.add-custom-contact', 'click', () => {
       BladesHelpers.addCustomContact(this.actor);
     });
 
@@ -143,14 +147,15 @@ export class BladesCrewSheet extends BladesSheet {
 	/* -------------------------------------------- */
 
   /** @override */
-  async _updateObject(event, formData) {
+  async _processSubmitData(event, form, submitData, options) {
 
-    // Update the Item
-    await super._updateObject(event, formData);
+    // Update the Actor
+    const result = await super._processSubmitData(event, form, submitData, options);
 
     if (event.target && event.target.name === "system.tier") {
-      this.render(true);
+      this.render();
     }
+    return result;
   }
   /* -------------------------------------------- */
 

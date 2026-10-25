@@ -1,3 +1,11 @@
+Unreleased
+- Requires Foundry VTT v14
+- Migrated all actor and item sheets from Application V1 to Application V2 (ActorSheetV2 / ItemSheetV2), removing the V1 deprecation warnings; sheet listeners no longer use jQuery and dialogs use DialogV2 only
+- Replaced the deprecated template.json with TypeDataModels declared through `documentTypes` in system.json; stored data keeps its existing shape
+- Character and crew notes (`system.description`), clock color and item `logic` are now declared fields, so they are kept by the data models
+- Item descriptions and experience clues use the `<prose-mirror>` editor instead of `{{editor}}`
+- Character and NPC notes are no longer enriched before being placed in their plain textareas, so saving the sheet can't write enriched link markup back into the notes
+
 v.6.1.2
 - Fix the alignment of roll dialog options (#76, Karlinator)
 - Changed positive faction status color from `deepskyblue` to `blue` to increase readibility (#73)

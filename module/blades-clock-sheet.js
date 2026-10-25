@@ -8,24 +8,26 @@ import { BladesSheet } from "./blades-sheet.js";
 export class BladesClockSheet extends BladesSheet {
 
   /** @override */
-	static get defaultOptions() {
-	  return foundry.utils.mergeObject(super.defaultOptions, {
-  	  classes: ["blades-in-the-dark", "sheet", "actor", "clock"],
-  	  template: "systems/blades-in-the-dark/templates/actors/clock-sheet.html",
+  static DEFAULT_OPTIONS = {
+    classes: ["clock"],
+    position: {
       width: 360,
-      height: 400,
-    });
-  }
+      height: 400
+    }
+  };
+
+  /** @override */
+  static PARTS = {
+    sheet: {
+      template: "systems/blades-in-the-dark/templates/actors/clock-sheet.html"
+    }
+  };
 
   /* -------------------------------------------- */
 
   /** @override */
-  getData(options) {
-    const superData = super.getData( options );
-    const sheetData = superData.data;
-    sheetData.owner = superData.owner;
-    sheetData.editable = superData.editable;
-    sheetData.isGM = game.user.isGM;
+  async _prepareContext(options) {
+    const sheetData = await super._prepareContext(options);
 	sheetData.sizeDropdown = {
 		"4": "4",
 		"6": "6",
@@ -49,7 +51,8 @@ export class BladesClockSheet extends BladesSheet {
     /* -------------------------------------------- */
 
   /** @override */
-  async _updateObject(event, formData) {
+  async _processSubmitData(event, form, submitData, options) {
+    const formData = foundry.utils.flattenObject(submitData);
     let image_path = `systems/blades-in-the-dark/themes/${formData['system.color']}/${formData['system.type']}clock_${formData['system.value']}.svg`;
     formData['img'] = image_path;
     formData['prototypeToken.texture.src'] = image_path;
@@ -72,7 +75,7 @@ export class BladesClockSheet extends BladesSheet {
     }
 
     // Update the Actor
-    return this.object.update(formData);
+    return super._processSubmitData(event, form, foundry.utils.expandObject(formData), options);
   }
 
   /* -------------------------------------------- */

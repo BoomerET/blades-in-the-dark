@@ -189,8 +189,44 @@
   display: flex;
   font-weight: bold;
 }
+.blades-in-the-dark.sheet .window-content {
+  padding: 8px;
+}
+.blades-in-the-dark.sheet .window-content > * {
+  flex: 1;
+  overflow-y: auto;
+}
+.blades-in-the-dark.sheet header.sheet-header {
+  display: flex;
+  align-items: center;
+}
+.blades-in-the-dark.sheet header.sheet-header img {
+  flex: 0 0 64px;
+  height: 64px;
+  margin-right: 6px;
+}
+.blades-in-the-dark.sheet header.sheet-header h1 {
+  flex: 1;
+  margin: 0;
+  border-bottom: none;
+}
+.blades-in-the-dark.sheet header.sheet-header h1 input {
+  height: 48px;
+  line-height: 48px;
+  margin: 8px 2%;
+  width: 96%;
+}
+.blades-in-the-dark.sheet .editor-content {
+  height: 100%;
+  overflow-y: auto;
+  word-break: break-word;
+}
+.blades-in-the-dark.sheet img[data-edit] {
+  cursor: var(--cursor-pointer);
+}
 .blades-in-the-dark .editor,
-.blades-in-the-dark .editor-content {
+.blades-in-the-dark .editor-content,
+.blades-in-the-dark prose-mirror {
   min-height: 150px;
 }
 .blades-in-the-dark .cohort-description,
@@ -698,7 +734,7 @@
 .blades-in-the-dark.crew.sheet .lair {
   margin-bottom: 10px;
 }
-.blades-in-the-dark.crew.sheet form.actor-sheet {
+.blades-in-the-dark.crew.sheet .actor-sheet {
   padding: 20px;
 }
 .blades-in-the-dark.crew.sheet nav {
@@ -1319,7 +1355,7 @@
 .blades-in-the-dark.actor.pc * .tab[data-tab].active {
   display: block;
 }
-.blades-in-the-dark.actor.pc * form.actor-sheet {
+.blades-in-the-dark.actor.pc * .actor-sheet {
   padding: 20px;
 }
 .blades-in-the-dark.actor.pc * .big-teeth-section {

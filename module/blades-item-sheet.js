@@ -1,29 +1,45 @@
 /**
  * Extend the basic ItemSheet
- * @extends {ItemSheet}
+ * @extends {ItemSheetV2}
  */
 import {onManageActiveEffect, prepareActiveEffectCategories} from "./effects.js";
 import { BladesActiveEffect } from "./blades-active-effect.js";
-import { getItemSheetClass, enrichHTML } from "./compat.js";
+import { activateRadioToggles } from "./blades-sheet.js";
+import { enrichHTML } from "./compat.js";
 
-const BaseItemSheet = getItemSheetClass();
+const { HandlebarsApplicationMixin } = foundry.applications.api;
+const { ItemSheetV2 } = foundry.applications.sheets;
 
-export class BladesItemSheet extends BaseItemSheet {
+export class BladesItemSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
 
   /** @override */
-	static get defaultOptions() {
+  static DEFAULT_OPTIONS = {
+    classes: ["blades-in-the-dark", "sheet", "item", "themed", "theme-light"],
+    position: {
+      width: 560,
+      height: "auto"
+    },
+    window: {
+      resizable: true
+    },
+    form: {
+      submitOnChange: true
+    }
+  };
 
-	  return foundry.utils.mergeObject(super.defaultOptions, {
-			classes: ["blades-in-the-dark", "sheet", "item"],
-			width: 560,
-			height: 'auto',
-      tabs: [{navSelector: ".sheet-tabs", contentSelector: ".sheet-body", initial: "description"}]
-		});
-  }
+  /** @override */
+  static PARTS = {
+    sheet: {
+      template: "systems/blades-in-the-dark/templates/items/simple.html",
+      scrollable: [""]
+    }
+  };
 
   /* -------------------------------------------- */
 
-  /** @override */
+  /**
+   * The template for this item's type.
+   */
   get template() {
     const path = "systems/blades-in-the-dark/templates/items";
     let simple_item_types = ["background", "heritage", "vice", "crew_reputation"];
@@ -39,77 +55,70 @@ export class BladesItemSheet extends BaseItemSheet {
   /* -------------------------------------------- */
 
   /** @override */
-	activateListeners(html) {
-    super.activateListeners(html);
-
-	//for compatibility with bitd-alternate-sheets v1.0.10
-	let alt_sheets = false;
-	try {alt_sheets = game.modules.get("bitd-alternate-sheets").active;} catch {}
-	if (alt_sheets) {
-		html.find("input.radio-toggle, label.radio-toggle").click((e) => e.preventDefault());
-		html.find("input.radio-toggle, label.radio-toggle").mousedown((e) => {
-			this._onRadioToggle(e);
-		});
-		html.find("input.radio-toggle, label.radio-toggle").contextmenu((e) => {	
-			this._onRadioToggle(e);
-		});		
-	} else {
-		html.find("input.radio-toggle, label.radio-toggle").click((e) => {	
-			this._onRadioToggle(e);
-		});
-		html.find("input.radio-toggle, label.radio-toggle").contextmenu((e) => {	
-			this._onRadioToggle(e);
-		});		
-	}
-
-    // Everything below here is only needed if the sheet is editable
-    if (!this.options.editable) return;
-
-    html.find(".effect-control").click(ev => {
-      if ( this.item.isOwned ) return ui.notifications.warn(game.i18n.localize("BITD.EffectWarning"))
-      BladesActiveEffect.onManageActiveEffect(ev, this.item)
-    });
+  _configureRenderParts(options) {
+    const parts = super._configureRenderParts(options);
+    parts.sheet.template = this.template;
+    return parts;
   }
 
   /* -------------------------------------------- */
 
   /** @override */
-  async getData(options) {
-    const superData = super.getData( options );
-    const sheetData = superData.data;
+  async _onRender(context, options) {
+    await super._onRender(context, options);
+    this.activateListeners(this.element);
+  }
 
-    sheetData.isGM = game.user.isGM;
-    sheetData.owner = superData.owner;
-    sheetData.editable = superData.editable;
+  /* -------------------------------------------- */
+
+  /**
+   * Attach the sheet's event listeners. Called after every render.
+   * @param {HTMLElement} html  The sheet's root element
+   */
+	activateListeners(html) {
+    activateRadioToggles(this);
+
+    // Everything below here is only needed if the sheet is editable
+    if (!this.isEditable) return;
+
+    for (const control of html.querySelectorAll(".effect-control")) {
+      control.addEventListener("click", ev => {
+        if ( this.item.isOwned ) return ui.notifications.warn(game.i18n.localize("BITD.EffectWarning"))
+        BladesActiveEffect.onManageActiveEffect(ev, this.item)
+      });
+    }
+  }
+
+  /* -------------------------------------------- */
+
+  /**
+   * Shape the context like the Application V1 sheets did (the item's own data at the
+   * top level) so the Handlebars templates keep working unchanged.
+   * @override
+   */
+  async _prepareContext(options) {
+    const context = await super._prepareContext(options);
+    const sheetData = Object.assign(context, this.item.toObject(false), {
+      item: this.item,
+      owner: this.item.isOwner,
+      editable: this.isEditable,
+      isGM: game.user.isGM
+    });
 
     // Prepare Active Effects
     sheetData.effects = prepareActiveEffectCategories(this.document.effects);
 
-    sheetData.system.description = await enrichHTML(sheetData.system.description, {secrets: sheetData.owner, async: true});
+    // Rich text shown by the <prose-mirror> editors while they are closed
+    sheetData.enriched = {};
+    for (const field of ["description", "experience_clues"]) {
+      const value = sheetData.system[field];
+      if (value === undefined || value === null) continue;
+      sheetData.enriched[field] = await enrichHTML(String(value), {
+        secrets: sheetData.owner,
+        relativeTo: this.item
+      });
+    }
 
     return sheetData;
   }
-  
-    /* -------------------------------------------- */
-  
-   async _onRadioToggle(event) {
-    let type = event.target.tagName.toLowerCase();
-    let target = event.target;
-    if (type == "label") {
-      let labelID = $(target).attr("for");
-      target = $(`#${labelID}`).get(0);
-    }
-
-    if (target.checked || (event.type == "contextmenu")) {
-      //find the next lowest-value input with the same name and click that one instead
-      let name = target.name;
-      let value = parseInt(target.value) - 1;
-      this.element
-        .find(`input[name="${name}"][value="${value}"]`)
-        .trigger("click");
-    } else {
-      //trigger the click on this one
-      $(target).trigger("click");
-    }
-  }	
 }

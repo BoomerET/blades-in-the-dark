@@ -1,58 +1,168 @@
 import { BladesActiveEffect } from "./blades-active-effect.js";
 import { BladesHelpers } from "./blades-helpers.js";
-import { getActorSheetClass } from "./compat.js";
 import { openFormDialog } from "./lib/dialog-compat.js";
 
-const BaseActorSheet = getActorSheetClass();
+const { HandlebarsApplicationMixin } = foundry.applications.api;
+const { ActorSheetV2 } = foundry.applications.sheets;
 
 /**
- * Extend the basic ActorSheet with some very simple modifications
- * @extends {ActorSheet}
+ * Read a data-* attribute value the way jQuery's .data() did: "true"/"false",
+ * "null" and numeric strings become their JS values, anything else stays a string.
+ * @param {string|undefined} value
  */
+export function parseDataValue(value) {
+  if (value === undefined) return undefined;
+  if (value === "true") return true;
+  if (value === "false") return false;
+  if (value === "null") return null;
+  if (value !== "" && String(Number(value)) === value) return Number(value);
+  return value;
+}
 
-export class BladesSheet extends BaseActorSheet {
+/**
+ * Wire the "radio-toggle" pip behaviour shared by actor and item sheets: clicking an
+ * unchecked pip selects it, clicking the selected pip (or right-clicking) steps back one.
+ * @param {foundry.applications.api.ApplicationV2} app
+ */
+export function activateRadioToggles(app) {
+  const toggles = app.element.querySelectorAll("input.radio-toggle, label.radio-toggle");
+  const onToggle = (event) => onRadioToggle(app, event);
+
+	//for compatibility with bitd-alternate-sheets v1.0.10
+	let alt_sheets = false;
+	try {alt_sheets = game.modules.get("bitd-alternate-sheets").active;} catch {}
+  for (const toggle of toggles) {
+    if (alt_sheets) {
+      toggle.addEventListener("click", (e) => e.preventDefault());
+      toggle.addEventListener("mousedown", onToggle);
+    } else {
+      toggle.addEventListener("click", onToggle);
+    }
+    toggle.addEventListener("contextmenu", onToggle);
+  }
+}
+
+function onRadioToggle(app, event) {
+  event.preventDefault();
+  const target = event.currentTarget.control ?? event.currentTarget;
+  if (!target) return;
+
+  let input = target;
+  if (target.checked || (event.type == "contextmenu")) {
+    //find the next lowest-value input with the same name and select that one instead
+    const value = parseInt(target.value) - 1;
+    input = app.element.querySelector(`input[name="${target.name}"][value="${value}"]`);
+  }
+  // A real click on the input fires its change event, which submits the sheet form.
+  input?.click();
+}
+
+/**
+ * Base Actor sheet for every Blades in the Dark actor type.
+ * @extends {ActorSheetV2}
+ */
+export class BladesSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
+
+  /** @override */
+  static DEFAULT_OPTIONS = {
+    classes: ["blades-in-the-dark", "sheet", "actor", "themed", "theme-light"],
+    window: {
+      resizable: true
+    },
+    form: {
+      submitOnChange: true
+    }
+  };
+
+  /* -------------------------------------------- */
+
+  /**
+   * Shape the context like the Application V1 sheets did (the actor's own data at the
+   * top level) so the Handlebars templates keep working unchanged.
+   * @override
+   */
+  async _prepareContext(options) {
+    const context = await super._prepareContext(options);
+    const sheetData = this.actor.toObject(false);
+    sheetData.items.sort((a, b) => (a.sort || 0) - (b.sort || 0));
+    return Object.assign(context, sheetData, {
+      actor: this.actor,
+      owner: this.actor.isOwner,
+      editable: this.isEditable,
+      isGM: game.user.isGM
+    });
+  }
 
   /* -------------------------------------------- */
 
   /** @override */
+  async _onRender(context, options) {
+    // Application V1 sheets made owned item rows draggable; ActorSheetV2 drags ".draggable".
+    for (const row of this.element.querySelectorAll(".item-list .item[data-item-id]")) {
+      row.classList.add("draggable");
+    }
+    await super._onRender(context, options);
+    this._restoreTabs();
+    this.activateListeners(this.element);
+  }
+
+  /* -------------------------------------------- */
+
+  /**
+   * Re-apply the active tab of each tab group after the template has been re-rendered.
+   */
+  _restoreTabs() {
+    for (const [group, tab] of Object.entries(this.tabGroups)) {
+      const navSelector = `.tabs [data-group="${group}"]`;
+      const nav = this.element.querySelector(`${navSelector}[data-tab="${tab}"]`)
+        ?? this.element.querySelector(navSelector);
+      if (nav) this.changeTab(nav.dataset.tab, group, {force: true, updatePosition: false});
+    }
+  }
+
+  /* -------------------------------------------- */
+
+  /**
+   * Add an event listener to every element in the sheet matching a selector.
+   * @param {string} selector
+   * @param {string} type
+   * @param {(event: Event) => void} handler
+   */
+  _on(selector, type, handler) {
+    for (const element of this.element.querySelectorAll(selector)) {
+      element.addEventListener(type, handler);
+    }
+  }
+
+  /* -------------------------------------------- */
+
+  /**
+   * The owned Item id of the ".item" row containing an element.
+   * @param {HTMLElement} element
+   */
+  _itemIdOf(element) {
+    return element.parentElement?.closest(".item")?.dataset.itemId;
+  }
+
+  /* -------------------------------------------- */
+
+  /**
+   * Attach the sheet's event listeners. Called after every render.
+   * @param {HTMLElement} html  The sheet's root element
+   */
 	activateListeners(html) {
-    super.activateListeners(html);
-    html.find(".item-add-popup").click(this._onItemAddClick.bind(this));
-    html.find(".update-box").click(this._onUpdateBoxClick.bind(this));
-	
-	//for compatibility with bitd-alternate-sheets v1.0.10
-	let alt_sheets = false;
-	try {alt_sheets = game.modules.get("bitd-alternate-sheets").active;} catch {}
-	if (alt_sheets) {
-		html.find("input.radio-toggle, label.radio-toggle").click((e) => e.preventDefault());
-		html.find("input.radio-toggle, label.radio-toggle").mousedown((e) => {
-			this._onRadioToggle(e);
-		});
-		html.find("input.radio-toggle, label.radio-toggle").contextmenu((e) => {	
-			this._onRadioToggle(e);
-		});		
-	} else {
-		html.find("input.radio-toggle, label.radio-toggle").click((e) => {	
-			this._onRadioToggle(e);
-		});
-		html.find("input.radio-toggle, label.radio-toggle").contextmenu((e) => {	
-			this._onRadioToggle(e);
-		});		
-	}
+    this._on(".item-add-popup", "click", this._onItemAddClick.bind(this));
+    this._on(".update-box", "click", this._onUpdateBoxClick.bind(this));
+
+    activateRadioToggles(this);
 
     // Post item to chat
-    html.find(".item-post").click((ev) => {
-      const element = $(ev.currentTarget).parents(".item");
-      const item = this.actor.items.get(element.data("itemId"));
+    this._on(".item-post", "click", (ev) => {
+      const item = this.actor.items.get(this._itemIdOf(ev.currentTarget));
       item.sendToChat();
     });
 
-    // This is a workaround until is being fixed in FoundryVTT.
-    if ( this.options.submitOnChange ) {
-      html.on("change", "textarea", this._onChangeInput.bind(this));  // Use delegated listener on the form
-    }
-
-    html.find(".roll-die-attribute").click((event) => {
+    this._on(".roll-die-attribute", "click", (event) => {
       const attributeName = event.currentTarget?.dataset?.rollAttribute;
       let defaultDice = 0;
       try {
@@ -67,33 +177,29 @@ export class BladesSheet extends BaseActorSheet {
 
       this.actor.rollAttributePopup(attributeName, sanitizedDice);
     });
-	
+
     // Update Inventory Item
-    html.find('.item-body').click(ev => {
-      const element = $(ev.currentTarget).parents(".item");
-      const item = this.actor.items.get(element.data("itemId"));
+    this._on(".item-body", "click", ev => {
+      const item = this.actor.items.get(this._itemIdOf(ev.currentTarget));
       item.sheet.render(true);
     });
     // Update Inventory Item
-    html.find('.item-sheet-open').click(ev => {
-      const element = $(ev.currentTarget).parents(".item");
-      const item = this.actor.items.get(element.data("itemId"));
+    this._on(".item-sheet-open", "click", ev => {
+      const item = this.actor.items.get(this._itemIdOf(ev.currentTarget));
       item.sheet.render(true);
     });
 
     // Delete Inventory Item
-    html.find('.item-delete').click( async ev => {
-      const element = $(ev.currentTarget).parents(".item");
-      await this.actor.deleteEmbeddedDocuments("Item", [element.data("itemId")]);
-      element.slideUp(200, () => this.render(false));
+    this._on(".item-delete", "click", async ev => {
+      await this.actor.deleteEmbeddedDocuments("Item", [this._itemIdOf(ev.currentTarget)]);
     });
 
     // manage active effects
-    html.find(".effect-control").click(ev => BladesActiveEffect.onManageActiveEffect(ev, this.actor));	
-	
-	
+    this._on(".effect-control", "click", ev => BladesActiveEffect.onManageActiveEffect(ev, this.actor));
+
+
 		// acquaintance status toggle
-    html.find('.standing-toggle').click(ev => {
+    this._on(".standing-toggle", "click", ev => {
       let acquaintances = this.actor.system.acquaintances;
       let acqId = ev.target.closest('.acquaintance').dataset.acquaintance;
       let clickedAcqIdx = acquaintances.findIndex(item => item.id == acqId);
@@ -115,38 +221,35 @@ export class BladesSheet extends BaseActorSheet {
       acquaintances.splice(clickedAcqIdx, 1, clickedAcq);
       this.actor.update({system: {acquaintances : acquaintances}});
     });
-	html.find('.standing-toggle').keydown(ev => {
+	this._on(".standing-toggle", "keydown", ev => {
 	  if (ev.key === " " || ev.key === "Spacebar" || ev.key === "Enter") {
 		 ev.preventDefault();
 		 ev.currentTarget.click();
 	  }
 	});
-	
+
 	  // Open Acquaintance
-    html.find('.open-friend').click(ev => {
-      const element = $(ev.currentTarget).parents(".item");
+    this._on(".open-friend", "click", ev => {
 		//acqId is the UUID of the Acquaintance
-	  let acqId = element.data("itemId");
+	  let acqId = this._itemIdOf(ev.currentTarget);
 		// if the Acquaintance is not in the world the if loop will trigger
-	  if (game.actors.get(element.data("itemId")) == undefined) {
+	  if (game.actors.get(acqId) == undefined) {
 		  //send the UUID and this actor to a helper fuction
 		  BladesHelpers.importAcquaintance(this.actor, acqId);
 	  } else {
-      const actor = game.actors.get(element.data("itemId"));
+      const actor = game.actors.get(acqId);
       actor?.sheet.render(true);
 	  }
     });
-	
+
 	// Remove Acquaintance from character sheet
-    html.find('.acquaintance-delete').click(ev => {
-      //let acqId = ev.target.closest('.acquaintance').dataset.acquaintance; //used when <div class="acquaintance"
-	  const element = $(ev.currentTarget).parents(".item");
-	  let acqId = element.data("itemId");
+    this._on(".acquaintance-delete", "click", ev => {
+	  let acqId = this._itemIdOf(ev.currentTarget);
 	  BladesHelpers.removeAcquaintance(this.actor, acqId);
     });
 
 	  // Import Acquaintance by playbook
-    html.find('.import-contacts').click(ev => {
+    this._on(".import-contacts", "click", ev => {
 	  const actor_type = this.actor.type;
 	  let item_type;
 	  if (actor_type=="character") {item_type = "class";}
@@ -157,7 +260,7 @@ export class BladesSheet extends BaseActorSheet {
     });
 
 		// Increment Exp Clock
-	html.find('.up-exp-clock').click(ev => {
+	this._on(".up-exp-clock", "click", ev => {
 		let value = this.actor.system.exp_clock.value;
 		let number = this.actor.system.exp_clock.number;
 		value = value + 1;
@@ -167,9 +270,9 @@ export class BladesSheet extends BaseActorSheet {
 		}
 		this.actor.update({"system.exp_clock": {value : value, number : number}});
 	});
-	
+
 			// Decrement Exp Clock
-	html.find('.down-exp-clock').click(ev => {
+	this._on(".down-exp-clock", "click", ev => {
 		let value = this.actor.system.exp_clock.value;
 		let number = this.actor.system.exp_clock.number;
 		value = value - 1;
@@ -179,31 +282,31 @@ export class BladesSheet extends BaseActorSheet {
 		}
 		this.actor.update({"system.exp_clock": {value : value, number : number}});
 	});
-	
+
 			// Add a whole Exp Clock
-	html.find('.add-exp-clock').click(ev => {
+	this._on(".add-exp-clock", "click", ev => {
 		let number = this.actor.system.exp_clock.number;
 		number = number + 1;
 		this.actor.update({"system.exp_clock": {number : number}});
 	});
-	
+
 				// Remove a whole Exp Clock
-	html.find('.minus-exp-clock').click(ev => {
+	this._on(".minus-exp-clock", "click", ev => {
 		let number = this.actor.system.exp_clock.number;
 		if (number > 0) {number = number - 1;}
 		else {number = 0;}
 		this.actor.update({"system.exp_clock": {number : number}});
 	});
-	
-	
+
+
   }
 
   /* -------------------------------------------- */
 
   async _onItemAddClick(event) {
     event.preventDefault();
-    const item_type = $(event.currentTarget).data("itemType")
-    const distinct = $(event.currentTarget).data("distinct")
+    const item_type = event.currentTarget.dataset.itemType;
+    const distinct = event.currentTarget.dataset.distinct;
     let input_type = "checkbox";
 
     if (typeof distinct !== "undefined") {
@@ -290,7 +393,7 @@ export class BladesSheet extends BaseActorSheet {
    */
   async _onRollAttributeDieClick(event) {
 
-    const attribute_name = $(event.currentTarget).data("rollAttribute");
+    const attribute_name = event.currentTarget.dataset.rollAttribute;
     this.actor.rollAttributePopup(attribute_name);
 
   }
@@ -299,9 +402,10 @@ export class BladesSheet extends BaseActorSheet {
 
   async _onUpdateBoxClick(event) {
     event.preventDefault();
-    const item_id = $(event.currentTarget).data("item");
-    var update_value = $(event.currentTarget).data("value");
-      const update_type = $(event.currentTarget).data("utype");
+    const dataset = event.currentTarget.dataset;
+    const item_id = dataset.item;
+    var update_value = parseDataValue(dataset.value);
+      const update_type = dataset.utype;
       if ( update_value === undefined) {
       update_value = document.getElementById('fac-' + update_type + '-' + item_id).value;
     };
@@ -320,28 +424,5 @@ export class BladesSheet extends BaseActorSheet {
 
 
     }
-
-  /* -------------------------------------------- */
-  
-   async _onRadioToggle(event) {
-    let type = event.target.tagName.toLowerCase();
-    let target = event.target;
-    if (type == "label") {
-      let labelID = $(target).attr("for");
-      target = $(`#${labelID}`).get(0);
-    }
-
-    if (target.checked || (event.type == "contextmenu")) {
-      //find the next lowest-value input with the same name and click that one instead
-      let name = target.name;
-      let value = parseInt(target.value) - 1;
-      this.element
-        .find(`input[name="${name}"][value="${value}"]`)
-        .trigger("click");
-    } else {
-      //trigger the click on this one
-      $(target).trigger("click");
-    }
-  }	
 
 }

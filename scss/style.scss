@@ -26,6 +26,53 @@ $hover-brightness: 0.8;
 .blades-in-the-dark{
   font-family: "Crimson Text", serif;
 
+  // Application V2 sheets: the window body stays put and the rendered sheet part scrolls.
+  &.sheet .window-content {
+    padding: 8px;
+
+    > * {
+      flex: 1;
+      overflow-y: auto;
+    }
+  }
+
+  // Sheet header and editor rules core only applies to Application V1 sheets (.sheet.app).
+  &.sheet {
+    header.sheet-header {
+      display: flex;
+      align-items: center;
+
+      img {
+        flex: 0 0 64px;
+        height: 64px;
+        margin-right: 6px;
+      }
+
+      h1 {
+        flex: 1;
+        margin: 0;
+        border-bottom: none;
+
+        input {
+          height: 48px;
+          line-height: 48px;
+          margin: 8px 2%;
+          width: 96%;
+        }
+      }
+    }
+
+    .editor-content {
+      height: 100%;
+      overflow-y: auto;
+      word-break: break-word;
+    }
+
+    img[data-edit] {
+      cursor: var(--cursor-pointer);
+    }
+  }
+
   @import 'import/general-styles.scss';
   @import 'import/clocks.scss';
 

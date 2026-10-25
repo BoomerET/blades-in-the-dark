@@ -1,9 +1,9 @@
-<form class="{{cssClass}} actor-sheet" autocomplete="off">
+<div class="actor-sheet">
 
   <section id="character-{{_id}}-name-alias" class="flex-horizontal name-alias">
 
     <div class="grow-two">
-      <img src="{{img}}" data-edit="img" data-tooltip="{{name}}" class="portrait" />
+      <img src="{{img}}" data-action="editImage" data-edit="img" data-tooltip="{{name}}" class="portrait" />
     </div>
 
     <div class="grow-two">
@@ -297,17 +297,17 @@
 
       {{!-- Nav menu --}}
       <nav class="tabs flex-horizontal">
-        <a class="item" data-tab="abilities">{{localize "BITD.Abilities"}}</a>
-        <a class="item" data-tab="loadout">{{localize "BITD.Loadout"}}</a>
-        <a class="item" data-tab="contacts">{{localize 'BITD.Contacts'}}</a>
-        <a class="item" data-tab="character-notes">{{localize "BITD.Notes"}}</a>
+        <a class="item" data-action="tab" data-group="primary" data-tab="abilities">{{localize "BITD.Abilities"}}</a>
+        <a class="item" data-action="tab" data-group="primary" data-tab="loadout">{{localize "BITD.Loadout"}}</a>
+        <a class="item" data-action="tab" data-group="primary" data-tab="contacts">{{localize 'BITD.Contacts'}}</a>
+        <a class="item" data-action="tab" data-group="primary" data-tab="character-notes">{{localize "BITD.Notes"}}</a>
         {{#if isGM}}
-        <a class="item" data-tab="effects">{{localize "BITD.Effects"}}</a>
+        <a class="item" data-action="tab" data-group="primary" data-tab="effects">{{localize "BITD.Effects"}}</a>
         {{/if}}
-        <a class="item" data-tab="all-character-items">{{localize "BITD.AllItems"}}</a>
+        <a class="item" data-action="tab" data-group="primary" data-tab="all-character-items">{{localize "BITD.AllItems"}}</a>
       </nav>
 
-      <div id="character-{{_id}}-abilities" class="tab flex-vertical abilities" data-tab="abilities">
+      <div id="character-{{_id}}-abilities" class="tab flex-vertical abilities" data-group="primary" data-tab="abilities">
         <div class="label-stripe">
           <p><label for="character-{{_id}}-experience-0">{{localize "BITD.Abilities"}}</label></p>
           <p><a class="item-add-popup" data-item-type="ability" data-tooltip="{{localize 'BITD.AddAbility'}}"><i class="fas fa-plus-square"></i></a></p>
@@ -344,7 +344,7 @@
       </div>
 
       {{!-- Owned Items Tab --}}
-      <div id="character-{{_id}}-loadout" class="tab flex-vertical loadout" data-tab="loadout">
+      <div id="character-{{_id}}-loadout" class="tab flex-vertical loadout" data-group="primary" data-tab="loadout">
         <div class="label-stripe flex-horizontal">
           <p>{{localize "BITD.Loadout"}} <a class="item-add-popup" data-item-type="item" data-tooltip="{{localize 'BITD.AddItem'}}"><i class="fas fa-plus-square"></i></a></p>
           <p>{{system.loadout}}/{{localize system.load_level}} </p>
@@ -372,7 +372,7 @@
         </div>
       </div>
 
-      <div class="tab flex-vertical" data-tab="character-notes">
+      <div class="tab flex-vertical" data-group="primary" data-tab="character-notes">
         <div class="label-stripe">
           <p>{{localize "BITD.Notes"}}</p>
         </div>
@@ -380,7 +380,7 @@
       </div>
 
       {{!-- Contacts --}}
-      <div id="character-{{_id}}-contacts" class="tab flex-vertical" data-tab="contacts">
+      <div id="character-{{_id}}-contacts" class="tab flex-vertical" data-group="primary" data-tab="contacts">
         <div class="label-stripe flex-horizontal">
           <p>{{localize system.acquaintances_label}}</p>
           <p>
@@ -412,7 +412,7 @@
       </div>
 
       {{!-- Active Effects --}}
-      <div id="character-{{_id}}-effects" class="tab effects flex-vertical" data-tab="effects">
+      <div id="character-{{_id}}-effects" class="tab effects flex-vertical" data-group="primary" data-tab="effects">
         <div class="label-stripe">
           <p>{{localize "BITD.Effects"}}</p>
         </div>
@@ -420,7 +420,7 @@
       </div>
 
       {{!-- Full Item List --}}
-      <div class="tab grow-two flex-vertical" data-tab="all-character-items">
+      <div class="tab grow-two flex-vertical" data-group="primary" data-tab="all-character-items">
         <div class="label-stripe">
           <p><label>{{localize "BITD.AllItems"}}</label></p>
         </div>
@@ -441,4 +441,4 @@
     {{> "systems/blades-in-the-dark/templates/parts/attributes.html" actor=actor}}
   </section>
 
-</form>
+</div>

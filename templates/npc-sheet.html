@@ -1,6 +1,6 @@
-<form class="{{cssClass}} actor-sheet" autocomplete="off">
+<div class="actor-sheet">
 <section class="npc-sheet flex-horizontal">
-	<img src="{{img}}" data-edit="img" title="{{name}}" height="150" width="150"/>
+	<img src="{{img}}" data-action="editImage" data-edit="img" title="{{name}}" height="150" width="150"/>
   <section class="npc-lines flex-column">
 	<div class="flex-horizontal">
 		<label class="text-line" for="character-{{_id}}-name" >{{localize 'BITD.Name'}}:</label>
@@ -38,5 +38,5 @@
 	</div>
 	</section>
   </section>
-</form>
+</div>
 

@@ -1,6 +1,5 @@
 
 import { BladesSheet } from "./blades-sheet.js";
-import { enrichHTML } from "./compat.js";
 
 /**
  * @extends {BladesSheet}
@@ -8,31 +7,20 @@ import { enrichHTML } from "./compat.js";
 export class BladesNPCSheet extends BladesSheet {
 
   /** @override */
-	static get defaultOptions() {
-	  return foundry.utils.mergeObject(super.defaultOptions, {
-  	  classes: ["blades-in-the-dark", "sheet", "actor"],
-  	  template: "systems/blades-in-the-dark/templates/npc-sheet.html",
+  static DEFAULT_OPTIONS = {
+    position: {
       width: 900,
-      height: 'auto',
-      tabs: [{navSelector: ".tabs", contentSelector: ".tab-content"}]
-    });
-  }
-
-  /* -------------------------------------------- */
+      height: "auto"
+    }
+  };
 
   /** @override */
-  async getData(options) {
-    const superData = super.getData( options );
-    const sheetData = superData.data;
-
-    sheetData.isGM = game.user.isGM;
-    sheetData.owner = superData.owner;
-    sheetData.editable = superData.editable;
-
-    sheetData.system.description = await enrichHTML(sheetData.system.description, {secrets: sheetData.owner, async: true});
-
-    return sheetData;
-  }
+  static PARTS = {
+    sheet: {
+      template: "systems/blades-in-the-dark/templates/npc-sheet.html",
+      scrollable: [""]
+    }
+  };
 
   /* -------------------------------------------- */
 
@@ -41,7 +29,7 @@ export class BladesNPCSheet extends BladesSheet {
     super.activateListeners(html);
 
     // Everything below here is only needed if the sheet is editable
-    if (!this.options.editable) return;
+    if (!this.isEditable) return;
 
     // Update Inventory Item
     // html.find('.item-body').click(ev => {

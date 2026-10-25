@@ -1,7 +1,6 @@
 import {BladesSheet} from "./blades-sheet.js";
 import {BladesActiveEffect} from "./blades-active-effect.js";
 import {BladesHelpers} from "./blades-helpers.js";
-import { enrichHTML } from "./compat.js";
 
 /**
  * Extend the basic ActorSheet with some very simple modifications
@@ -10,25 +9,32 @@ import { enrichHTML } from "./compat.js";
 export class BladesActorSheet extends BladesSheet {
 
     /** @override */
-    static get defaultOptions() {
-        return foundry.utils.mergeObject(super.defaultOptions, {
-            classes: ["blades-in-the-dark", "sheet", "actor", "pc"],
-            template: "systems/blades-in-the-dark/templates/actor-sheet.html",
+    static DEFAULT_OPTIONS = {
+        classes: ["pc"],
+        position: {
             width: 790,
-            height: 890,
-            tabs: [{navSelector: ".tabs", contentSelector: ".tab-content", initial: "abilities"}]
-        });
-    }
+            height: 890
+        }
+    };
+
+    /** @override */
+    static PARTS = {
+        sheet: {
+            template: "systems/blades-in-the-dark/templates/actor-sheet.html",
+            scrollable: [""]
+        }
+    };
+
+    /** @override */
+    tabGroups = {
+        primary: "abilities"
+    };
 
     /* -------------------------------------------- */
 
     /** @override */
-    async getData(options) {
-        const superData = super.getData(options);
-        const sheetData = superData.data;
-        sheetData.owner = superData.owner;
-        sheetData.editable = superData.editable;
-        sheetData.isGM = game.user.isGM;
+    async _prepareContext(options) {
+        const sheetData = await super._prepareContext(options);
 
         // Prepare active effects
         sheetData.effects = BladesActiveEffect.prepareActiveEffectCategories(this.actor.effects);
@@ -91,11 +97,6 @@ export class BladesActorSheet extends BladesSheet {
             };
         }
 
-        sheetData.system.description = await enrichHTML(sheetData.system.description, {
-            secrets: sheetData.owner,
-            async: true
-        });
-
         // catch unmigrated actor data and apply the Mastery crew ability to attribute maxes
         sheetData.system.attributes = this.actor.getComputedAttributes();
 
@@ -111,22 +112,24 @@ export class BladesActorSheet extends BladesSheet {
 
     /** @override **/
     async _onDropItem(event, droppedItem) {
-        await super._onDropItem(event, droppedItem);
+        const result = await super._onDropItem(event, droppedItem);
         if (!this.actor.isOwner) {
             ui.notifications.error(`You do not have sufficient permissions to edit this character. Please speak to your GM if you feel you have reached this message in error.`, {permanent: true});
             return false;
         }
         await this.handleDrop(event, droppedItem);
+        return result;
     }
 
     /** @override **/
     async _onDropActor(event, droppedActor) {
-        await super._onDropActor(event, droppedActor);
+        const result = await super._onDropActor(event, droppedActor);
         if (!this.actor.isOwner) {
             ui.notifications.error(`You do not have sufficient permissions to edit this character. Please speak to your GM if you feel you have reached this message in error.`, {permanent: true});
             return false;
         }
         await this.handleDrop(event, droppedActor);
+        return result ?? droppedActor;
     }
 
     /** @override **/
@@ -157,17 +160,16 @@ export class BladesActorSheet extends BladesSheet {
         super.activateListeners(html);
 
         // Everything below here is only needed if the sheet is editable
-        if (!this.options.editable) return;
+        if (!this.isEditable) return;
 
         // Remove Crew from character sheet
-        html.find('.crew-delete').click(ev => {
-            const element = $(ev.currentTarget).parents(".item");
-            let crewId = element.data("itemId");
+        this._on('.crew-delete', 'click', ev => {
+            let crewId = this._itemIdOf(ev.currentTarget);
             BladesHelpers.removeCrew(this.actor, crewId);
         });
 
         // Add custom contact
-        html.find('.add-custom-contact').click(() => {
+        this._on('.add-custom-contact', 'click', () => {
             BladesHelpers.addCustomContact(this.actor);
         });
 

@@ -1,6 +1,6 @@
-<form class="{{cssClass}}" autocomplete="off">
+<div class="item-sheet-content">
   <header class="sheet-header">
-      <img src="{{img}}" data-edit="img" title="{{name}}"/>
+      <img src="{{img}}" data-action="editImage" data-edit="img" title="{{name}}"/>
       <div class="header-fields">
           <h1 class="charname"><input name="name" type="text" value="{{name}}" placeholder="{{localize 'BITD.Name'}}"/></h1>
       </div>
@@ -8,9 +8,9 @@
 
   <section class="flex-vertical">
     <label class="label-stripe">{{localize "BITD.Description"}}</label>
-    {{editor system.description target="system.description" button=true editable=editable}}
+    <prose-mirror name="system.description" value="{{system.description}}" toggled>{{{enriched.description}}}</prose-mirror>
     <label class="label-stripe">{{localize "BITD.ExpClues"}}</label>
-    {{editor system.experience_clues target="system.experience_clues" button=true editable=editable}}
+    <prose-mirror name="system.experience_clues" value="{{system.experience_clues}}" toggled>{{{enriched.experience_clues}}}</prose-mirror>
 
     <label class="label-stripe">{{localize "BITD.Turf"}}</label>
     <div id="turf-container">{{> "systems/blades-in-the-dark/templates/parts/turf-list.html" turfs_data=system.turfs can_edit=true editable=editable}}</div>
@@ -19,4 +19,4 @@
     <div id="effects">{{> "systems/blades-in-the-dark/templates/parts/active-effects.html"}}</div>
 	{{/if}}
   </section>
-</form>
+</div>

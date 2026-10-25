@@ -4,7 +4,7 @@
   "description": "Blades in the Dark game system.",
   "version": "6.1.2",
   "compatibility": {
-    "minimum": 11,
+    "minimum": "14",
     "verified": "14.362"
   },
   "background": "systems/blades-in-the-dark/images/BITD_title.webp",
@@ -229,5 +229,30 @@
       "sorting": "m",
       "packs": ["entanglements-macro", "entanglements", "entanglements-journals"]
 	}
-  ]
+  ],
+  "documentTypes": {
+    "Actor": {
+      "\ud83d\udd5b clock": {},
+      "character": {},
+      "npc": {},
+      "crew": {},
+      "factions": {}
+    },
+    "Item": {
+      "faction": {},
+      "item": {},
+      "class": {},
+      "ability": {},
+      "heritage": {},
+      "background": {},
+      "vice": {},
+      "hunting_grounds": {},
+      "crew_upgrade": {},
+      "cohort": {},
+      "crew_type": {},
+      "crew_reputation": {},
+      "crew_ability": {},
+      "prison": {}
+    }
+  }
 }

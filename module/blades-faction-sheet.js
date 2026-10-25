@@ -7,27 +7,21 @@ import { BladesSheet } from "./blades-sheet.js";
 export class BladesFactionSheet extends BladesSheet {
 
   /** @override */
-	static get defaultOptions() {
-	  return foundry.utils.mergeObject(super.defaultOptions, {
-  	  classes: ["blades-in-the-dark", "sheet", "actor", "faction"],
-  	  template: "systems/blades-in-the-dark/templates/faction-sheet.html",
+  static DEFAULT_OPTIONS = {
+    classes: ["faction"],
+    position: {
       width: 900,
-      height: 'auto',
-      tabs: [{navSelector: ".tabs", contentSelector: ".tab-content"}]
-    });
-  }
-
-  /* -------------------------------------------- */
+      height: "auto"
+    }
+  };
 
   /** @override */
-  async getData(options) {
-    const superData = super.getData( options );
-    const sheetData = superData.data;
-    sheetData.owner = superData.owner;
-    sheetData.editable = superData.editable;
-    sheetData.isGM = game.user.isGM;
-    return sheetData;
-  }
+  static PARTS = {
+    sheet: {
+      template: "systems/blades-in-the-dark/templates/faction-sheet.html",
+      scrollable: [""]
+    }
+  };
 
   /* -------------------------------------------- */
 
@@ -36,20 +30,17 @@ export class BladesFactionSheet extends BladesSheet {
     super.activateListeners(html);
 
     // Everything below here is only needed if the sheet is editable
-    if (!this.options.editable) return;
+    if (!this.isEditable) return;
 
     // Update Inventory Item
-    html.find('.item-body').click(ev => {
-      const element = $(ev.currentTarget).parents(".item");
-      const item = this.actor.items.get(element.data("itemId"));
+    this._on('.item-body', 'click', ev => {
+      const item = this.actor.items.get(this._itemIdOf(ev.currentTarget));
       item.sheet.render(true);
     });
 
     // Delete Inventory Item
-    html.find('.item-delete').click( async ev => {
-      const element = $(ev.currentTarget).parents(".item");
-      await this.actor.deleteEmbeddedDocuments("Item", [element.data("itemId")]);
-      element.slideUp(200, () => this.render(false));
+    this._on('.item-delete', 'click', async ev => {
+      await this.actor.deleteEmbeddedDocuments("Item", [this._itemIdOf(ev.currentTarget)]);
     });
 
 	}
